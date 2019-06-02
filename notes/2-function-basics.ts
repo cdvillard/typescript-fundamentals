@@ -23,6 +23,11 @@ const sendTextMessage = (
 // (3) return types can almost always be inferred
 function getNameParts(contact: { name: string }) {
   const parts = contact.name.split(/\s/g); // split @ whitespace
+  if (parts.length === 1) { // Causes inferred return type that can cause ripples
+    return {
+      name: parts[0]
+    };
+  }
   if (parts.length < 2) {
     throw new Error(`Can't calculate name parts from name "${contact.name}"`);
   }
@@ -43,8 +48,8 @@ console.log(sum(3, 4, 6)); // 13
 
 // (5) we can even provide multiple function signatures
 // "overload signatures"
-// function contactPeople(method: "email", ...people: HasEmail[]): void;
-// function contactPeople(method: "phone", ...people: HasPhoneNumber[]): void;
+function contactPeople(method: "email", ...people: HasEmail[]): void;
+function contactPeople(method: "phone", ...people: HasPhoneNumber[]): void;
 
 // "function implementation"
 function contactPeople(
@@ -69,32 +74,32 @@ contactPeople("email", { name: "foo", phone: 12345678 });
 
 // (6) the lexical scope (this) of a function is part of its signature
 
-// function sendMessage(
-//   this: HasEmail & HasPhoneNumber,
-//   preferredMethod: "phone" | "email"
-// ) {
-//   if (preferredMethod === "email") {
-//     console.log("sendEmail");
-//     sendEmail(this);
-//   } else {
-//     console.log("sendTextMessage");
-//     sendTextMessage(this);
-//   }
-// }
-// const c = { name: "Mike", phone: 3215551212, email: "mike@example.com" };
+function sendMessage(
+  this: HasEmail & HasPhoneNumber,
+  preferredMethod: "phone" | "email"
+) {
+  if (preferredMethod === "email") {
+    console.log("sendEmail");
+    sendEmail(this);
+  } else {
+    console.log("sendTextMessage");
+    sendTextMessage(this);
+  }
+}
+const c = { name: "Mike", phone: 3215551212, email: "mike@example.com" };
 
-// function invokeSoon(cb: () => any, timeout: number) {
-//   setTimeout(() => cb.call(null), timeout);
-// }
+function invokeSoon(cb: () => any, timeout: number) {
+  setTimeout(() => cb.call(null), timeout);
+}
 
 // 🚨 this is not satisfied
-// invokeSoon(() => sendMessage("email"), 500);
+invokeSoon(() => sendMessage(c, "email"), 500);
 
 // ✅ creating a bound function is one solution
-// const bound = sendMessage.bind(c, "email");
-// invokeSoon(() => bound(), 500);
+const bound = sendMessage.bind(c, "email");
+invokeSoon(() => bound(), 500);
 
 // ✅ call/apply works as well
-// invokeSoon(() => sendMessage.apply(c, ["phone"]), 500);
+invokeSoon(() => sendMessage.apply(c, ["phone"]), 500);
 
 export default {};
